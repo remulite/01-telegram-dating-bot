@@ -1,6 +1,7 @@
 import telebot
 import json
 import os
+from telebot import types
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import TOKEN
 
@@ -13,13 +14,31 @@ bot = telebot.TeleBot(TOKEN)
 user_data = {}
 
 @bot.message_handler(commands=['start'])
-def start(messaage):
+def start(message):
+    keyboard = types.ReplyKeyboardMarkup(
+        resize_keyboard=True
+    )
+
+    keyboard.add(types.KeyboardButton("📋 Меню"))
+
     markup = InlineKeyboardMarkup()
-    button = InlineKeyboardButton("📝 Создать анкету", callback_data="create_profile")
+    button = InlineKeyboardButton(
+        "📝 Создать анкету",
+        callback_data="create_profile"
+    )
     markup.add(button)
 
-    bot.send_message(messaage.chat.id, "Добро пожаловать!\n\nЗдесь можно найти новых людей.\n\n👇 Начнем создание анкеты?", reply_markup=markup)
+    bot.send_message(
+        message.chat.id,
+        "Добро пожаловать!\n\nЗдесь можно найти новых людей.\n\n👇 Начнем создание анкеты?",
+        reply_markup=keyboard
+    )
 
+    bot.send_message(
+        message.chat.id,
+        "Или создайте анкету:",
+        reply_markup=markup
+    )
 
 DATABASE_FILE = "database.json"
 
@@ -209,6 +228,12 @@ def wrong_photo(message):
         "Пожалуйста, отправьте фотографию."
     )
 
+@bot.message_handler(func=lambda m: m.text == "📋 Меню")
+def menu(message):
+    bot.send_message(
+        message.chat.id,
+        "📋 Пока здесь ничего нет."
+    )
 
 print("Бот запущен:)")
 
