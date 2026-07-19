@@ -15,6 +15,30 @@ DATABASE_FILE = 'database.json'
 user_data = {}
 user_states = {}
 
+user_vis = {} 
+
+testprofiles = [
+    {
+        'name': 'Алина',
+        'age': 19,
+        'gender': 'Девушка',
+        'desc': 'Тестовая анкета #1'
+    },
+    {
+        'name': 'Максим',
+        'age': 21,
+        'gender': 'Парень',
+        'desc': 'Тестовая анкета #2'
+    },
+    {
+        'name': 'София',
+        'age': 39,
+        'gender': 'Девушка',
+        'desc': 'Тестовая анкета #3'
+    }
+]
+
+profile_index = {}
 @bot.message_handler(commands=['start'])
 def start(message):
     keyboard = types.ReplyKeyboardMarkup(
@@ -212,11 +236,92 @@ def wrongphoto(message):
 
 @bot.message_handler(func=lambda m: m.text == '📋 Меню')
 def menu(message):
+    markup = InlineKeyboardMarkup()
+
+    markup.add(InlineKeyboardButton('👀 Смотреть анкеты', callback_data='show_profiles'))
+    markup.add(InlineKeyboardButton('🙈 Не показывать мою анкету', callback_data='hide_profile'))
+    markup.add(InlineKeyboardButton('🔄 Заполнить анкету заново', callback_data='reset_profile'))
+
     bot.send_message(
         message.chat.id,
-        '📋 Пока здесь ничего нет.'
+        '📋 Главное меню',
+        reply_markup=markup)
+
+
+
+def send_test_profile(chat_id, user_id):
+    index = profile_index.get(user_id, 0)
+
+    if index >= len(testprofiles):
+        bot.send_message(
+            chat_id,
+            '😢 Тестовые анкеты закончились.'
+        )
+        return
+
+    p = testprofiles[index]
+    text = (
+        f'👤 {p["name"]}\\n'
+        f'🎂 {p["age"]} лет\\n'
+        f'🚻 {p["gender"]}\\n\\n'
+        f'📝 {p["desc"]}'
     )
 
+    markup = InlineKeyboardMarkup()
+
+    markup.row(
+        InlineKeyboardButton('❤️', callback_data='like'),
+        InlineKeyboardButton('💔', callback_data='dislike')
+    )
+
+    bot.send_message(chat_id, text, reply_markup=markup)
+
+
+
+@bot.callback_query_handler(func=lambda c: c.data == 'show_profiles')
+def show_profiles(call):
+    user_id = call.from_user.id
+    profile_index[user_id] = 0
+    bot.answer_callback_query(call.id)
+    send_test_profile(call.message.chat.id, user_id)
+
+
+@bot.callback_query_handler(func=lambda c: c.data in ['like', 'dislike'])
+def next_profile(call):
+    user_id = call.from_user.id
+
+    profile_index[user_id] = profile_index.get(user_id, 0) + 1
+
+    bot.answer_callback_query(call.id)
+
+    send_test_profile(call.message.chat.id, user_id)
+
+
+@bot.callback_query_handler(func=lambda c: c.data == 'hide_profile')
+def hide_profile(call):
+    user_vis[call.from_user.id] = False
+
+    bot.answer_callback_query(call.id)
+
+    bot.send_message(
+        call.message.chat.id,
+        '🙈 Ваша анкета больше не отображается.'
+    )
+
+
+@bot.callback_query_handler(func=lambda c: c.data == 'reset_profile')
+def reset_profile(call):
+    user_id = call.from_user.id
+
+    user_data[user_id] = {}
+
+    set_state(user_id, 'waiting_name')
+    bot.answer_callback_query(call.id)
+
+    bot.send_message(
+        call.message.chat.id,
+        '🔄 Заполним анкету заново!\\n\\nКак вас зовут?')
+    
 print('Бот запущен:)')
 
 bot.infinity_polling(skip_pending=True)
